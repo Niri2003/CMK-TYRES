@@ -11,7 +11,6 @@ router.post('/book-service', async (req, res) => {
             (user_id, customer_name, services, total_price, phone, branch, preferred_dates, problem_description, status) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`;
         
-        // Ensure services and dates are stringified for MySQL JSON compatibility
         const servicesStr = JSON.stringify(services);
         const datesStr = typeof preferred_dates === 'string' ? preferred_dates : JSON.stringify(preferred_dates);
 
@@ -23,24 +22,40 @@ router.post('/book-service', async (req, res) => {
     }
 });
 
-// 2. GET USER ORDERS (History)
+// 2. GET USER ORDERS (Sorted newest first)
 router.get('/user-orders/:userId', async (req, res) => {
     try {
-        const [results] = await db.query("SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC", [req.params.userId]);
+        const [results] = await db.query(
+            "SELECT * FROM bookings WHERE user_id = ? ORDER BY id DESC", 
+            [req.params.userId]
+        );
         res.status(200).json(results);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// 3. GET ALL ORDERS (Admin View)
+// 3. USER: CANCEL OWN ORDER (The missing piece for your "Failed to Cancel" error)
+router.patch('/cancel-order/:orderId', async (req, res) => {
+    try {
+        await db.query(
+            "UPDATE bookings SET status = 'Cancelled', notes = 'Cancelled by User' WHERE id = ?", 
+            [req.params.orderId]
+        );
+        res.status(200).json({ message: "Order Cancelled by User" });
+    } catch (err) {
+        console.error("User Cancel Error:", err);
+        res.status(500).json({ error: "Cancel failed" });
+    }
+});
+
+// 4. GET ALL ORDERS (Admin View - Sorted newest first)
 router.get('/admin-orders', async (req, res) => {
     try {
-        // We use LEFT JOIN to get the email from the users table
         const sql = `SELECT b.*, u.email 
                      FROM bookings b 
                      LEFT JOIN users u ON b.user_id = u.id 
-                     ORDER BY b.created_at DESC`;
+                     ORDER BY b.id DESC`;
         const [results] = await db.query(sql);
         res.status(200).json(results);
     } catch (err) {
@@ -48,13 +63,12 @@ router.get('/admin-orders', async (req, res) => {
     }
 });
 
-// 4. UPDATE STATUS (Accept / Finish) + EMAIL LOGIC
+// 5. ADMIN: UPDATE STATUS (Accept / Finish) + EMAIL LOGIC
 router.patch('/update-status/:orderId', async (req, res) => {
     try {
         const { orderId } = req.params;
         const { status, confirmed_date } = req.body; 
 
-        // Get the current order data and the user's email
         const [rows] = await db.query(
             "SELECT b.*, u.email FROM bookings b LEFT JOIN users u ON b.user_id = u.id WHERE b.id = ?", 
             [orderId]
@@ -70,7 +84,7 @@ router.patch('/update-status/:orderId', async (req, res) => {
             await db.query("UPDATE bookings SET status = ? WHERE id = ?", [status, orderId]);
         }
 
-        // --- EMAIL LOGIC ---
+        // --- EMAIL NOTIFICATIONS ---
         if (order.email) {
             if (status === 'Accepted' && confirmed_date) {
                 await sendUserEmail(order.email, "Booking Confirmed! ✅", `
@@ -80,14 +94,11 @@ router.patch('/update-status/:orderId', async (req, res) => {
                 `);
             } 
             else if (status === 'Completed') {
-                // Parse the services JSON into a bulleted list
                 let servicesListHtml = "<ul>";
                 try {
                     const servicesArray = typeof order.services === 'string' ? JSON.parse(order.services) : order.services;
                     if (Array.isArray(servicesArray)) {
                         servicesListHtml += servicesArray.map(s => `<li>${s.title || s.service || s.name}</li>`).join("");
-                    } else {
-                        servicesListHtml += "<li>General Service</li>";
                     }
                 } catch (e) {
                     servicesListHtml += "<li>Maintenance Service</li>";
@@ -100,7 +111,6 @@ router.patch('/update-status/:orderId', async (req, res) => {
                     <p><b>Services Performed:</b></p>
                     ${servicesListHtml}
                     <p><b>Total Amount: ₹${order.total_price}</b></p>
-                    <p>Thank you for choosing CMK Auto Services!</p>
                 `);
             }
         }
@@ -112,7 +122,7 @@ router.patch('/update-status/:orderId', async (req, res) => {
     }
 });
 
-// 5. ADMIN: CANCEL WITH REASON
+// 6. ADMIN: CANCEL WITH REASON
 router.patch('/admin-cancel/:orderId', async (req, res) => {
     try {
         const { orderId } = req.params;
@@ -129,8 +139,7 @@ router.patch('/admin-cancel/:orderId', async (req, res) => {
         if (order && order.email) {
             await sendUserEmail(order.email, "Booking Cancelled ⚠️", `
                 <p>Hi ${order.customer_name},</p>
-                <p>Your booking was cancelled for the following reason:</p>
-                <p style="color: red;"><b>${reason}</b></p>
+                <p>Your booking was cancelled for the following reason: <b>${reason}</b></p>
             `);
         }
 
