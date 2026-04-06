@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from "react-router-dom";
 
 const SERVICES = [
   {
@@ -39,26 +40,28 @@ const SERVICES = [
 ];
 
 const Collection = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 border-t">
       
-      {/* Sidebar Filter - Repurposed as "Service Categories" */}
+      {/* Sidebar */}
       <div className="min-w-60">
-        <p className="my-2 text-xl flex items-center cursor-pointer gap-2 uppercase font-medium">
+        <p className="my-2 text-xl flex items-center gap-2 uppercase font-medium">
           Our Expertise
         </p>
         <div className="border border-gray-300 pl-5 py-3 mt-6 hidden sm:block">
           <p className="mb-3 text-sm font-medium">SERVICE TYPES</p>
           <div className="flex flex-col gap-2 text-sm font-light text-gray-700">
-            <p className="flex gap-2 ">Mechanical Services</p>
-            <p className="flex gap-2">Maintenance</p>
-            <p className="flex gap-2">Emergency Support</p>
-            <p className="flex gap-2">Logistics (Delivery)</p>
+            <p>Mechanical Services</p>
+            <p>Maintenance</p>
+            <p>Emergency Support</p>
+            <p>Logistics (Delivery)</p>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1">
         <div className="flex justify-between text-base sm:text-2xl mb-4">
           <h1 className="text-gray-500">
@@ -70,15 +73,23 @@ const Collection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 gap-y-10">
           {SERVICES.map((item) => (
             <div key={item.id} className="border p-6 rounded-lg hover:shadow-lg transition-all duration-300 bg-white group">
+              
               <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
                 {item.title}
               </h3>
+
               <p className="text-gray-600 text-sm leading-relaxed">
                 {item.description}
               </p>
-              <div className="mt-4 flex items-center gap-2 text-orange-600 text-xs font-bold uppercase tracking-wider cursor-pointer">
-                Book This Service <span>&rarr;</span>
+
+              {/* 🔥 CLICK HANDLER ADDED HERE */}
+              <div
+                onClick={() => navigate('/book', { state: { service: item } })}
+                className="mt-4 flex items-center gap-2 text-orange-600 text-xs font-bold uppercase tracking-wider cursor-pointer"
+              >
+                Book This Service →
               </div>
+
             </div>
           ))}
         </div>

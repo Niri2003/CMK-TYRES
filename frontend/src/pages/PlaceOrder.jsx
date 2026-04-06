@@ -10,9 +10,9 @@ const PlaceOrder = () => {
   const [formData, setFormData] = useState({
     phone: '',
     branch: 'Kottayam',
-    date1: '', // Option 1
-    date2: '', // Option 2
-    date3: '', // Option 3
+    date1: '',
+    date2: '',
+    date3: '',
     problem: ''
   });
 
@@ -27,7 +27,6 @@ const PlaceOrder = () => {
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
     
-    // Validate that dates are unique
     const dates = [formData.date1, formData.date2, formData.date3];
     if (new Set(dates).size !== dates.length) {
       alert("Please select three different dates to provide better options for the workshop.");
@@ -37,12 +36,11 @@ const PlaceOrder = () => {
     const orderData = {
       userId: user.id,
       customer_name: user.name, 
-      customer_email: user.email, // Added for the mailer we discussed
+      customer_email: user.email,
       services: cartItems,
       total_price: subtotal,
       phone: formData.phone,
       branch: formData.branch,
-      // We send this as a JSON string of options
       preferred_dates: JSON.stringify(dates), 
       problem: formData.problem 
     };
@@ -71,12 +69,19 @@ const PlaceOrder = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <input disabled value={user?.name || ''} className="p-4 bg-white border border-gray-200 rounded-2xl font-bold text-gray-400 cursor-not-allowed" type="text" />
+              
               <input 
                 required
                 placeholder="Phone Number" 
                 className="p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#0054a6] font-bold" 
-                type="tel" 
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                type="tel"
+                maxLength="10"
+                pattern="[0-9]{10}"
+                value={formData.phone}
+                onChange={(e) => setFormData({
+                  ...formData, 
+                  phone: e.target.value.replace(/\D/g, '') // blocks non-numbers
+                })}
               />
             </div>
 
@@ -92,15 +97,18 @@ const PlaceOrder = () => {
               </select>
             </div>
 
-            {/* THREE DATE OPTIONS */}
             <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
-              <p className="text-[10px] font-black text-[#0054a6] uppercase tracking-widest">Preferred Service Dates (Provide 3 options)</p>
+              <p className="text-[10px] font-black text-[#0054a6] uppercase tracking-widest">
+                Preferred Service Dates (Provide 3 options)
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input required type="date" className="p-3 border rounded-xl text-sm font-bold" onChange={(e) => setFormData({...formData, date1: e.target.value})} />
                 <input required type="date" className="p-3 border rounded-xl text-sm font-bold" onChange={(e) => setFormData({...formData, date2: e.target.value})} />
                 <input required type="date" className="p-3 border rounded-xl text-sm font-bold" onChange={(e) => setFormData({...formData, date3: e.target.value})} />
               </div>
-              <p className="text-[10px] text-gray-400 italic">The admin will confirm one of these dates based on workshop availability.</p>
+              <p className="text-[10px] text-gray-400 italic">
+                The admin will confirm one of these dates based on workshop availability.
+              </p>
             </div>
 
             <textarea 
@@ -112,7 +120,6 @@ const PlaceOrder = () => {
           </div>
         </div>
 
-        {/* SIDEBAR REMAINS LARGELY THE SAME BUT WITH UPDATED COLORS */}
         <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-50 h-fit sticky top-32">
           <h2 className="text-xl font-black text-gray-900 mb-6 border-b pb-4">Service Summary</h2>
           <div className="space-y-4 mb-8">
